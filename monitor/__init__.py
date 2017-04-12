@@ -50,6 +50,7 @@ def handle_processed_images(number_of_processed_images):
     if status_implementation == DEFAULT_STATUS_IMPLEMENTATION:
         update_image_number_cachet(number_of_processed_images)
 
+
 def config_section_map(section):
     dict1 = {}
     options = config.options(section)
