@@ -28,7 +28,7 @@ class Monitor:
         self.handle_processed_images(number_of_processed_images)
         time.sleep(self.DEFAULT_MONITOR_SLEEP_TIME)
 
-    def get_processed_images_last_hour(date_prefix):
+    def get_processed_images_last_hour(self, date_prefix):
         global db_name, db_user, db_password, db_host, db_port, db_images_table_name
         try:
             connection = psycopg2.connect(db_name, db_user, db_password, db_host, db_port, sslmode='verify-full')
@@ -48,6 +48,7 @@ class Monitor:
         if self.__status_implementation == self.DEFAULT_STATUS_IMPLEMENTATION:
             self.update_image_number_cachet(number_of_processed_images)
 
-    def update_image_number_cachet(number_of_processed_images):
+    @staticmethod
+    def update_image_number_cachet(self, number_of_processed_images):
         # TODO: call cachet POST
         return None
