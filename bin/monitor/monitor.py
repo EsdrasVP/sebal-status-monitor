@@ -7,8 +7,12 @@ from datetime import datetime, timedelta
 
 class Monitor:
 
-    DEFAULT_STATUS_IMPLEMENTATION = "cachet"
+    SCHEDULER_COMPONENT = "scheduler"
+    CRAWLER_COMPONENT = "crawler"
+    FETCHER_COMPONENT = "fetcher"
+
     DEFAULT_CONFIG_FILE_PATH = "resources/config.ini"  # TODO: see if this path is correct
+    DEFAULT_STATUS_IMPLEMENTATION = "cachet"
     DEFAULT_PROCESSED_STATE = "fetched"
     DEFAULT_DOWNLOADED_STATE = "downloaded"
     DEFAULT_SUBMITTED_STATE = "submitted"
@@ -16,14 +20,20 @@ class Monitor:
     def __init__(self):
         self.__config = ConfigParser.ConfigParser()
         self.__config.read(self.DEFAULT_CONFIG_FILE_PATH)
-        self.__db_name = self.config_section_map("SectionOne")['db_name']
-        self.__db_user = self.config_section_map("SectionOne")['db_user']
-        self.__db_password = self.config_section_map("SectionOne")['db_password']
-        self.__db_host = self.config_section_map("SectionOne")['db_host']
-        self.__db_port = self.config_section_map("SectionOne")['db_port']
-        self.__db_images_table_name = self.config_section_map("SectionOne")['db_images_table_name']
-        self.__status_implementation = self.config_section_map("SectionOne")['status_implementation']
-        self.__cachet_host_url = self.config_section_map("SectionOne")['cachet_host_url']
+        self.__scheduler_ip = self.config_section_map("SectionOne")['scheduler_ip']
+        self.__scheduler_port = self.config_section_map("SectionOne")['scheduler_port']
+        self.__crawler_ip = self.config_section_map("SectionOne")['crawler_ip']
+        self.__crawler_port = self.config_section_map("SectionOne")['crawler_port']
+        self.__fetcher_ip = self.config_section_map("SectionOne")['fetcher_ip']
+        self.__fetcher_port = self.config_section_map("SectionOne")['fetcher_port']
+        self.__db_name = self.config_section_map("SectionTwo")['db_name']
+        self.__db_user = self.config_section_map("SectionTwo")['db_user']
+        self.__db_password = self.config_section_map("SectionTwo")['db_password']
+        self.__db_host = self.config_section_map("SectionTwo")['db_host']
+        self.__db_port = self.config_section_map("SectionTwo")['db_port']
+        self.__db_images_table_name = self.config_section_map("SectionTwo")['db_images_table_name']
+        self.__status_implementation = self.config_section_map("SectionThree")['status_implementation']
+        self.__cachet_host_url = self.config_section_map("SectionThree")['cachet_host_url']
 
     def config_section_map(self, section):
         dict1 = {}
@@ -46,12 +56,33 @@ class Monitor:
         self.get_operation_failures()
 
     def check_components(self):
-        self.update_component_status("scheduler")
-        self.update_component_status("crawler")
-        self.update_component_status("fetcher")
+        try:
+            self.update_component_status(self.SCHEDULER_COMPONENT)
+            self.update_component_status(self.CRAWLER_COMPONENT)
+            self.update_component_status(self.FETCHER_COMPONENT)
+        except ValueError as e:
+            logging.error("Error while updating component statuses", e)
 
     def update_component_status(self, component):
-        # TODO: call cachet POST
+        if component == self.SCHEDULER_COMPONENT:
+            self.set_scheduler_status()
+        elif component == self.CRAWLER_COMPONENT:
+            self.set_crawler_status()
+        elif component == self.FETCHER_COMPONENT:
+            self.set_fetcher_status()
+        else:
+            raise ValueError('Component ' + component + ' does exist!')
+
+    def set_scheduler_status(self):
+        # TODO: implement
+        return None
+
+    def set_crawler_status(self):
+        # TODO: implement
+        return None
+
+    def set_fetcher_status(self):
+        # TODO: implement
         return None
 
     def images_status_control(self):
