@@ -1,7 +1,9 @@
 import logging
 import ConfigParser
 import psycopg2
+import getpass
 from time import strftime
+from pexpect import pxssh
 from datetime import datetime, timedelta
 
 
@@ -22,10 +24,13 @@ class Monitor:
         self.__config.read(self.DEFAULT_CONFIG_FILE_PATH)
         self.__scheduler_ip = self.config_section_map("SectionOne")['scheduler_ip']
         self.__scheduler_port = self.config_section_map("SectionOne")['scheduler_port']
+        self.__scheduler_username = self.config_section_map("SectionOne")['scheduler_username']
         self.__crawler_ip = self.config_section_map("SectionOne")['crawler_ip']
         self.__crawler_port = self.config_section_map("SectionOne")['crawler_port']
+        self.__crawler_username = self.config_section_map("SectionOne")['crawler_username']
         self.__fetcher_ip = self.config_section_map("SectionOne")['fetcher_ip']
         self.__fetcher_port = self.config_section_map("SectionOne")['fetcher_port']
+        self.__fetcher_username = self.config_section_map("SectionOne")['fetcher_username']
         self.__db_name = self.config_section_map("SectionTwo")['db_name']
         self.__db_user = self.config_section_map("SectionTwo")['db_user']
         self.__db_password = self.config_section_map("SectionTwo")['db_password']
@@ -74,16 +79,49 @@ class Monitor:
             raise ValueError('Component ' + component + ' does exist!')
 
     def set_scheduler_status(self):
-        # TODO: implement
-        return None
+        is_active = self.get_scheduler_status()
+        if is_active == 0:
+            return None  # only here for now to fix identation
+            # TODO: call POST call to cachet with status 'operational'
+        else:
+            return None  # only here for now to fix identation
+            # TODO: call POST call to cachet with status 'major outage'
+
+    def get_scheduler_status(self):
+        ssh_connection = pxssh.pxssh(options={"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"})
+        ssh_connection.login(self.__scheduler_ip, self.__scheduler_username)
+        return ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')  # Check if
+        # spaces are correct
 
     def set_crawler_status(self):
-        # TODO: implement
-        return None
+        is_active = self.get_crawler_status()
+        if is_active == 0:
+            return None # only here for now to fix identation
+            # TODO: call POST call to cachet with status 'operational'
+        else:
+            return None  # only here for now to fix identation
+            # TODO: call POST call to cachet with status 'major outage'
+
+    def get_crawler_status(self):
+        ssh_connection = pxssh.pxssh(options={"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"})
+        ssh_connection.login(self.__crawler_ip, self.__crawler_username)
+        return ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')  # Check if
+        # spaces are correct
 
     def set_fetcher_status(self):
-        # TODO: implement
-        return None
+        is_active = self.get_fetcher_status()
+        if is_active == 0:
+            return None # only here for now to fix identation
+            # TODO: call POST call to cachet with status 'operational'
+        else:
+            return None  # only here for now to fix identation
+            # TODO: call POST call to cachet with status 'major outage'
+
+    def get_fetcher_status(self):
+        ssh_connection = pxssh.pxssh(options={"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"})
+        ssh_connection.login(self.__fetcher_ip, self.__fetcher_username)
+        return ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')  # Check if
+        # spaces are correct
 
     def images_status_control(self):
         date_least_one_hour = datetime.today() - timedelta(hours=1)
