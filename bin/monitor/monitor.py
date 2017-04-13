@@ -1,7 +1,6 @@
 import logging
 import ConfigParser
 import psycopg2
-import getpass
 from time import strftime
 from pexpect import pxssh
 from datetime import datetime, timedelta
@@ -112,10 +111,10 @@ class Monitor:
         is_active = self.get_fetcher_status()
         if is_active == 0:
             return None # only here for now to fix identation
-            # TODO: call POST call to cachet with status 'operational'
+            # TODO: insert POST call to cachet with status 'operational'
         else:
             return None  # only here for now to fix identation
-            # TODO: call POST call to cachet with status 'major outage'
+            # TODO: insert POST call to cachet with status 'major outage'
 
     def get_fetcher_status(self):
         ssh_connection = pxssh.pxssh(options={"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"})
@@ -129,27 +128,23 @@ class Monitor:
         self.get_processed_images(date)
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
-        self.get_images_execution_time(date)
+        self.set_images_times(date)
 
     def get_processed_images(self, date):
-        number_of_processed_images = self.get_images_in_state_last_hour(date, self.DEFAULT_PROCESSED_STATE)
+        number_of_processed_images = self.get_number_of_images_with_state_in_last_hour(date, self.DEFAULT_PROCESSED_STATE)
         self.handle_images(number_of_processed_images, self.DEFAULT_PROCESSED_STATE)
 
     def get_downloaded_images(self, date):
-        number_of_downloaded_images = self.get_images_in_state_last_hour(date, self.DEFAULT_DOWNLOADED_STATE)
+        number_of_downloaded_images = self.get_number_of_images_with_state_in_last_hour(date, self.DEFAULT_DOWNLOADED_STATE)
         self.handle_images(number_of_downloaded_images, self.DEFAULT_DOWNLOADED_STATE)
 
     def get_submitted_images(self, date):
-        number_of_submitted_images = self.get_images_in_state_last_hour(date, "not_downloaded")
-        number_of_submitted_images += self.get_images_in_state_last_hour(date, "selected")
-        number_of_submitted_images += self.get_images_in_state_last_hour(date, "downloading")
+        number_of_submitted_images = self.get_number_of_images_with_state_in_last_hour(date, "not_downloaded")
+        number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "selected")
+        number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "downloading")
         self.handle_images(number_of_submitted_images, self.DEFAULT_SUBMITTED_STATE)
 
-    def get_images_execution_time(self, date):
-        # TODO: implement
-        return None
-
-    def get_images_in_state_last_hour(self, date_prefix, state):
+    def get_number_of_images_with_state_in_last_hour(self, date_prefix, state):
         try:
             connection = psycopg2.connect(self.__db_name, self.__db_user, self.__db_password, self.__db_host,
                                           self.__db_port, sslmode='verify-full')
@@ -168,6 +163,27 @@ class Monitor:
     def handle_images(self, number_of_images, state):
         if self.__status_implementation == self.DEFAULT_STATUS_IMPLEMENTATION:
             self.update_image_number_cachet(number_of_images, state)
+
+    def set_images_times(self, date):
+        self.set_images_times_with_state_in_last_hour(date, self.DEFAULT_PROCESSED_STATE)
+
+    def set_images_times_with_state_in_last_hour(self, date_prefix, state):
+        try:
+            connection = psycopg2.connect(self.__db_name, self.__db_user, self.__db_password, self.__db_host,
+                                          self.__db_port, sslmode='verify-full')
+            cursor = connection.cursor()
+
+            # Date prefix must follow an established format
+            # ex.: 2017-04-12 18 (date previous_hour)
+            statement_sql = "SELECT utime FROM " + self.__db_images_table_name + \
+                            " WHERE state = '" + state + "' AND utime::text LIKE '" + date_prefix + "%';"
+            cursor.execute(statement_sql)
+            for record in cursor:
+                return None  # only here for now to fix identation
+                # TODO: insert POST call to cachet sending image execution time
+        except psycopg2.Error as e:
+            logging.error("Error while getting images in " + state + " state from database", e)
+            return e.pgcode
 
     def update_image_number_cachet(self, number_of_images, state):
         # TODO: call cachet POST
