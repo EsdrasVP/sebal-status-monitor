@@ -6,6 +6,7 @@ from pexpect import pxssh
 from dateutil import rrule
 from datetime import datetime, timedelta
 from bin.util.constants import ApplicationConstants
+from bin.monitor.cachet import CachetHelper
 
 
 class Monitor:
@@ -28,8 +29,7 @@ class Monitor:
         self.__db_host = self.config_section_map("SectionTwo")['db_host']
         self.__db_port = self.config_section_map("SectionTwo")['db_port']
         self.__db_images_table_name = self.config_section_map("SectionTwo")['db_images_table_name']
-        self.__status_implementation = self.config_section_map("SectionThree")['status_implementation']
-        self.__cachet_host_url = self.config_section_map("SectionThree")['cachet_host_url']
+        self.__cachet_helper = CachetHelper.__init__()
 
     def config_section_map(self, section):
         dict1 = {}
@@ -84,7 +84,7 @@ class Monitor:
         scheduler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
         if scheduler_status != 0:
-            self.set_operation_failure()
+            self.__cachet_helper.set_operation_failure()
         return scheduler_status
 
     def set_crawler_status(self):
@@ -103,7 +103,7 @@ class Monitor:
         crawler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
         if crawler_status != 0:
-            self.set_operation_failure()
+            self.__cachet_helper.set_operation_failure()
         return crawler_status
 
     def set_fetcher_status(self):
@@ -122,7 +122,7 @@ class Monitor:
         fetcher_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
         if fetcher_status != 0:
-            self.set_operation_failure()
+            self.__cachet_helper.set_operation_failure()
         return fetcher_status
 
     def images_status_control(self):
@@ -131,26 +131,29 @@ class Monitor:
         self.get_processed_images(date)
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
-        self.set_images_times(date)
-        self.check_images_in_number_of_hours()
+        self.set_last_hour_timestamps(date, ApplicationConstants.DEFAULT_PROCESSED_STATE)
+        self.check_last_hours_efficiency()
 
     def get_processed_images(self, date):
         number_of_processed_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                        DEFAULT_PROCESSED_STATE)
         # Number of processed images equal to 0 after three hours it's an operation failure. But we need to know if
         # these three hours already passed to register a failure.
-        self.handle_images(number_of_processed_images, ApplicationConstants.DEFAULT_PROCESSED_STATE)
+        self.__cachet_helper.update_image_number_cachet(number_of_processed_images, ApplicationConstants.
+                                                        DEFAULT_PROCESSED_STATE)
 
     def get_downloaded_images(self, date):
         number_of_downloaded_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                         DEFAULT_DOWNLOADED_STATE)
-        self.handle_images(number_of_downloaded_images, ApplicationConstants.DEFAULT_DOWNLOADED_STATE)
+        self.__cachet_helper.update_image_number_cachet(number_of_downloaded_images, ApplicationConstants.
+                                                        DEFAULT_DOWNLOADED_STATE)
 
     def get_submitted_images(self, date):
         number_of_submitted_images = self.get_number_of_images_with_state_in_last_hour(date, "not_downloaded")
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "selected")
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "downloading")
-        self.handle_images(number_of_submitted_images, ApplicationConstants.DEFAULT_SUBMITTED_STATE)
+        self.__cachet_helper.update_image_number_cachet(number_of_submitted_images, ApplicationConstants.
+                                                        DEFAULT_SUBMITTED_STATE)
 
     def get_number_of_images_with_state_in_last_hour(self, date_prefix, state):
         try:
@@ -168,11 +171,7 @@ class Monitor:
             logging.error("Error while getting images in " + state + " state from database", e)
             return e.pgcode
 
-    def handle_images(self, number_of_images, state):
-        if self.__status_implementation == ApplicationConstants.DEFAULT_STATUS_IMPLEMENTATION:
-            self.update_image_number_cachet(number_of_images, state)
-
-    def check_images_in_number_of_hours(self):
+    def check_last_hours_efficiency(self):
         last_hours_date_time = datetime.now() - timedelta(hours=3)
         now = datetime.now()
 
@@ -184,12 +183,9 @@ class Monitor:
                                                                                   DEFAULT_PROCESSED_STATE)
 
         if processed_images == 0:
-            self.set_operation_failure()
+            self.__cachet_helper.set_operation_failure()
 
-    def set_images_times(self, date):
-        self.set_images_times_with_state_in_last_hour(date, ApplicationConstants.DEFAULT_PROCESSED_STATE)
-
-    def set_images_times_with_state_in_last_hour(self, date_prefix, state):
+    def set_last_hour_timestamps(self, date_prefix, state):
         try:
             connection = psycopg2.connect(self.__db_name, self.__db_user, self.__db_password, self.__db_host,
                                           self.__db_port, sslmode='verify-full')
@@ -207,30 +203,18 @@ class Monitor:
             logging.error("Error while getting images in " + state + " state from database", e)
             return e.pgcode
 
-    def update_image_number_cachet(self, number_of_images, state):
-        # TODO: call cachet POST
-        return None
-
     def get_crawler_disk_usage(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
         ssh_connection = pxssh.pxssh(options)
         ssh_connection.login(self.__crawler_ip, self.__crawler_username)
-        return ssh_connection.sendline("df -P | awk 'NR==2 {print $5}'")  # String returned here will be in format
-        # value%
+        disk_usage = ssh_connection.sendline("df -P | awk 'NR==2 {print $5}'").rsplit('%', 1)[0]
+        if disk_usage >= 100:
+            self.__cachet_helper.set_operation_failure()
+        return disk_usage
 
     def get_swift_disk_usage(self):
         # TODO: implement
         # There are some problems here. First thing is that we need to know swift's total disk to determinate a usage
         # percentage. Second thing is that we need a authorization token to communicate with swift, and it must be
         # generated per hour.
-        return None
-
-    def set_operation_failure(self):
-        # TODO: implement
-        # Here, we will register an operation failure and an incident. So it might change to receive a message based on
-        # the failure for we to know, automatically, which failure caused the incident.
-        return None
-
-    def set_incident(self):
-        # TODO: implement
         return None
