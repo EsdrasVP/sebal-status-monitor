@@ -14,21 +14,10 @@ class Monitor:
     def __init__(self):
         self.__config = ConfigParser.ConfigParser()
         self.__config.read(ApplicationConstants.DEFAULT_CONFIG_FILE_PATH)
-        self.__scheduler_ip = self.config_section_map("SectionOne")['scheduler_ip']
-        self.__scheduler_port = self.config_section_map("SectionOne")['scheduler_port']
-        self.__scheduler_username = self.config_section_map("SectionOne")['scheduler_username']
-        self.__crawler_ip = self.config_section_map("SectionOne")['crawler_ip']
-        self.__crawler_port = self.config_section_map("SectionOne")['crawler_port']
-        self.__crawler_username = self.config_section_map("SectionOne")['crawler_username']
-        self.__fetcher_ip = self.config_section_map("SectionOne")['fetcher_ip']
-        self.__fetcher_port = self.config_section_map("SectionOne")['fetcher_port']
-        self.__fetcher_username = self.config_section_map("SectionOne")['fetcher_username']
-        self.__db_name = self.config_section_map("SectionTwo")['db_name']
-        self.__db_user = self.config_section_map("SectionTwo")['db_user']
-        self.__db_password = self.config_section_map("SectionTwo")['db_password']
-        self.__db_host = self.config_section_map("SectionTwo")['db_host']
-        self.__db_port = self.config_section_map("SectionTwo")['db_port']
-        self.__db_images_table_name = self.config_section_map("SectionTwo")['db_images_table_name']
+        self.__scheduler = Scheduler.__init__(self.__config)
+        self.__crawler = Crawler.__init__(self.__config)
+        self.__fetcher = Fetcher.__init__(self.__config)
+        self.__database = Database.__init__(self.__config)
         self.__cachet_helper = CachetHelper.__init__()
 
     def config_section_map(self, section):
@@ -80,7 +69,7 @@ class Monitor:
     def get_scheduler_status(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
         ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__scheduler_ip, self.__scheduler_username)
+        ssh_connection.login(self.__scheduler.scheduler_ip, self.__scheduler.scheduler_username)
         scheduler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
         if scheduler_status != 0:
@@ -99,7 +88,7 @@ class Monitor:
     def get_crawler_status(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
         ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__crawler_ip, self.__crawler_username)
+        ssh_connection.login(self.__crawler.crawler_ip, self.__crawler.crawler_username)
         crawler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
         if crawler_status != 0:
@@ -118,7 +107,7 @@ class Monitor:
     def get_fetcher_status(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
         ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__fetcher_ip, self.__fetcher_username)
+        ssh_connection.login(self.__fetcher.fetcher_ip, self.__fetcher.fetcher_username)
         fetcher_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
         if fetcher_status != 0:
@@ -157,13 +146,14 @@ class Monitor:
 
     def get_number_of_images_with_state_in_last_hour(self, date_prefix, state):
         try:
-            connection = psycopg2.connect(self.__db_name, self.__db_user, self.__db_password, self.__db_host,
-                                          self.__db_port, sslmode='verify-full')
+            connection = psycopg2.connect(self.__database.db_name, self.__database.db_user,
+                                          self.__database.db_password, self.__database.db_host,
+                                          self.__database.db_port, sslmode='verify-full')
             cursor = connection.cursor()
 
             # Date prefix must follow an established format
             # ex.: 2017-04-12 18 (date previous_hour)
-            statement_sql = "SELECT * FROM " + self.__db_images_table_name + \
+            statement_sql = "SELECT * FROM " + self.__database.db_images_table_name + \
                             " WHERE state = '" + state + "' AND utime::text LIKE '" + date_prefix + "%';"
             cursor.execute(statement_sql)
             return cursor.rowcount
@@ -187,13 +177,14 @@ class Monitor:
 
     def set_last_hour_timestamps(self, date_prefix, state):
         try:
-            connection = psycopg2.connect(self.__db_name, self.__db_user, self.__db_password, self.__db_host,
-                                          self.__db_port, sslmode='verify-full')
+            connection = psycopg2.connect(self.__database.db_name, self.__database.db_user,
+                                          self.__database.db_password, self.__database.db_host,
+                                          self.__database.db_port, sslmode='verify-full')
             cursor = connection.cursor()
 
             # Date prefix must follow an established format
             # ex.: 2017-04-12 18 (date previous_hour)
-            statement_sql = "SELECT utime FROM " + self.__db_images_table_name + \
+            statement_sql = "SELECT utime FROM " + self.__database.db_images_table_name + \
                             " WHERE state = '" + state + "' AND utime::text LIKE '" + date_prefix + "%';"
             cursor.execute(statement_sql)
             for record in cursor:
@@ -206,7 +197,7 @@ class Monitor:
     def get_crawler_disk_usage(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
         ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__crawler_ip, self.__crawler_username)
+        ssh_connection.login(self.__crawler.crawler_ip, self.__crawler.crawler_username)
         disk_usage = ssh_connection.sendline("df -P | awk 'NR==2 {print $5}'").rsplit('%', 1)[0]
         if disk_usage >= 100:
             self.__cachet_helper.set_operation_failure()
@@ -218,3 +209,94 @@ class Monitor:
         # percentage. Second thing is that we need a authorization token to communicate with swift, and it must be
         # generated per hour.
         return None
+
+
+class Scheduler(object):
+
+    def __init__(self, config):
+        self.config = config
+        self.scheduler_ip = self.config_section_map("SectionOne")['scheduler_ip']
+        self.scheduler_port = self.config_section_map("SectionOne")['scheduler_port']
+        self.scheduler_username = self.config_section_map("SectionOne")['scheduler_username']
+
+    def config_section_map(self, section):
+        dict1 = {}
+        options = self.config.options(section)
+        for option in options:
+            try:
+                dict1[option] = self.config.get(section, option)
+                if dict1[option] == -1:
+                    logging.debug("skip: %s", option)
+            except Exception as e:
+                logging.debug(str(e))
+                dict1[option] = None
+        return dict1
+
+
+class Crawler(object):
+
+    def __init__(self, config):
+        self.config = config
+        self.crawler_ip = self.config_section_map("SectionOne")['crawler_ip']
+        self.crawler_port = self.config_section_map("SectionOne")['crawler_port']
+        self.crawler_username = self.config_section_map("SectionOne")['crawler_username']
+
+    def config_section_map(self, section):
+        dict1 = {}
+        options = self.config.options(section)
+        for option in options:
+            try:
+                dict1[option] = self.config.get(section, option)
+                if dict1[option] == -1:
+                    logging.debug("skip: %s", option)
+            except Exception as e:
+                logging.debug(str(e))
+                dict1[option] = None
+        return dict1
+
+
+class Fetcher(object):
+
+    def __init__(self, config):
+        self.config = config
+        self.fetcher_ip = self.config_section_map("SectionOne")['fetcher_ip']
+        self.fetcher_port = self.config_section_map("SectionOne")['fetcher_port']
+        self.fetcher_username = self.config_section_map("SectionOne")['fetcher_username']
+
+    def config_section_map(self, section):
+        dict1 = {}
+        options = self.config.options(section)
+        for option in options:
+            try:
+                dict1[option] = self.config.get(section, option)
+                if dict1[option] == -1:
+                    logging.debug("skip: %s", option)
+            except Exception as e:
+                logging.debug(str(e))
+                dict1[option] = None
+        return dict1
+
+
+class Database(object):
+
+    def __init__(self, config):
+        self.config = config
+        self.db_name = self.config_section_map("SectionTwo")['db_name']
+        self.db_user = self.config_section_map("SectionTwo")['db_user']
+        self.db_password = self.config_section_map("SectionTwo")['db_password']
+        self.db_host = self.config_section_map("SectionTwo")['db_host']
+        self.db_port = self.config_section_map("SectionTwo")['db_port']
+        self.db_images_table_name = self.config_section_map("SectionTwo")['db_images_table_name']
+
+    def config_section_map(self, section):
+        dict1 = {}
+        options = self.config.options(section)
+        for option in options:
+            try:
+                dict1[option] = self.config.get(section, option)
+                if dict1[option] == -1:
+                    logging.debug("skip: %s", option)
+            except Exception as e:
+                logging.debug(str(e))
+                dict1[option] = None
+        return dict1
