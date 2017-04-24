@@ -2,11 +2,11 @@ import ConfigParser
 import logging
 import psycopg2
 import time
+import subprocess
 from datetime import datetime, timedelta
 from dateutil import rrule
 from pexpect import pxssh
 from time import strftime
-
 from bin.plugins.cachet.cachetplugin import CachetPlugin
 from bin.util.constants import ApplicationConstants
 
@@ -203,7 +203,15 @@ class Monitor:
         # There are some problems here. First thing is that we need to know swift's total disk to determinate a usage
         # percentage. Second thing is that we need a authorization token to communicate with swift, and it must be
         # generated per hour.
-        return None
+        swift = Swift.__init__(config=self.__config)
+        response = subprocess.check_output(['swift', '--os-auth-token', swift.get_auth_token(), '--os-storage-url',
+                                            swift.get_storage_url(), 'stat', swift.get_container_name()])
+        response_split = response.split()
+        bytes_response_split = response_split[3].split(":")
+        total_used_bytes = bytes_response_split[2]
+        used_disk_in_gb = float(total_used_bytes)/1073741824
+        disk_usage = (100 * used_disk_in_gb) / swift.get_total_disk()
+        return disk_usage
 
 
 class Scheduler(object):
@@ -340,3 +348,49 @@ class Database(object):
 
     def get_db_images_table_name(self):
         return self.__db_images_table_name
+
+
+class Swift:
+
+    def __init__(self, config):
+        self.__config = config
+        self.__auth_token = self.generate_auth_token()
+        self.__storage_url = self.config_section_map("SectionFive")['swift_storage_url']
+        self.__container_name = self.config_section_map("SectionFive")['swift_container_name']
+        self.__total_disk = self.config_section_map("SectionFive")['swift_total_disk']
+
+    def generate_auth_token(self):
+        fogbow_cli_path = self.config_section_map("SectionFour")['fogbow_cli_path']
+        ldap_project_id = self.config_section_map("SectionFour")['ldap_project_id']
+        ldap_user_id = self.config_section_map("SectionFour")['ldap_user_id']
+        ldap_password = self.config_section_map("SectionFour")['ldap_password']
+        ldap_auth_url = self.config_section_map("SectionFour")['ldap_auth_url']
+        ldap_token = subprocess.check_output(['bash', fogbow_cli_path, 'token', '--create', '-DprojectId='
+                                              + ldap_project_id, '-DuserId=' + ldap_user_id, '-Dpassword='
+                                              + ldap_password, '-DauthUrl=' + ldap_auth_url, '--type', 'openstack'])
+        return ldap_token
+
+    def config_section_map(self, section):
+        dict1 = {}
+        options = self.__config.options(section)
+        for option in options:
+            try:
+                dict1[option] = self.__config.get(section, option)
+                if dict1[option] == -1:
+                    logging.debug("skip: %s", option)
+            except Exception as e:
+                logging.debug(str(e))
+                dict1[option] = None
+        return dict1
+
+    def get_auth_token(self):
+        return self.__auth_token
+
+    def get_storage_url(self):
+        return self.__storage_url
+
+    def get_container_name(self):
+        return self.__container_name
+
+    def get_total_disk(self):
+        return self.__total_disk
