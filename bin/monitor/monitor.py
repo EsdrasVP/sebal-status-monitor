@@ -198,11 +198,8 @@ class Monitor:
                                                                + " disk is overloaded!")
         return disk_usage
 
+    # see if swift will be a component
     def get_swift_disk_usage(self):
-        # TODO: implement
-        # There are some problems here. First thing is that we need to know swift's total disk to determinate a usage
-        # percentage. Second thing is that we need a authorization token to communicate with swift, and it must be
-        # generated per hour.
         swift = Swift.__init__(config=self.__config)
         response = subprocess.check_output(['swift', '--os-auth-token', swift.get_auth_token(), '--os-storage-url',
                                             swift.get_storage_url(), 'stat', swift.get_container_name()])
