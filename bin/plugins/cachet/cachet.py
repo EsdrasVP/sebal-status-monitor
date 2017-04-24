@@ -297,7 +297,7 @@ class MetricPoint:
         return self.__timestamp
 
     def __str__(self):
-        return "id : %s" % self.__id
+        return "id : %s" % self.__metric_id
 
     def __unicode__(self):
-        return u"id : %s" % self.__id
+        return u"id : %s" % self.__metric_id
