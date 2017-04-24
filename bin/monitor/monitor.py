@@ -79,8 +79,7 @@ class Monitor:
     def set_crawler_status(self):
         is_active = self.get_crawler_status()
         if is_active == 0:
-            return None # only here for now to fix identation
-            # TODO: call PUT call to cachet with status 'operational'
+            self.__status_implementation.update_component_status(ApplicationConstants.CRAWLER_COMPONENT, 1)
         else:
             self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT,
                                                                ApplicationConstants.CRAWLER_COMPONENT + " is down!")
@@ -96,8 +95,7 @@ class Monitor:
     def set_fetcher_status(self):
         is_active = self.get_fetcher_status()
         if is_active == 0:
-            return None # only here for now to fix identation
-            # TODO: insert PUT call to cachet with status 'operational'
+            self.__status_implementation.update_component_status(ApplicationConstants.FETCHER_COMPONENT, 1)
         else:
             self.__status_implementation.set_operation_failure(ApplicationConstants.FETCHER_COMPONENT,
                                                                ApplicationConstants.FETCHER_COMPONENT + " is down!")

@@ -1,4 +1,3 @@
-import os
 import logging
 import ConfigParser
 from bin.util.constants import ApplicationConstants
