@@ -41,10 +41,18 @@ class CachetPlugin:
         Cachet.update_component_status(endpoint=self.__cachet_host_url, component=component, status=status,
                                        token=self.__cachet_token)
 
-    def update_image_number_cachet(self, number_of_images, state, timestamp):
+    def update_image_number(self, number_of_images, metric_name, timestamp):
         metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
         for current_metric in metrics:
-            if state in current_metric.get_name():
+            if current_metric.get_name() == metric_name:
                 metric_point = MetricPoint.__init__(current_metric.get_id(), number_of_images, timestamp)
+                Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
+                                           token=self.__cachet_token)
+
+    def update_average_image_execution_time(self, image_execution_time, timestamp):
+        metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
+        for current_metric in metrics:
+            if current_metric.get_name == ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME:
+                metric_point = MetricPoint.__init__(current_metric.get_id(), image_execution_time, timestamp)
                 Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
                                            token=self.__cachet_token)

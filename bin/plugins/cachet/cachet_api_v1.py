@@ -185,22 +185,6 @@ class CachetApiV1:
             logging.exception("Error while update component.")
             return None
 
-    @staticmethod
-    def get_intents(endpoint):
-        pass
-
-        # TODO implement
-
-    @staticmethod
-    def get_intent(endpoint):
-        pass
-
-        # TODO implement
-
-    @staticmethod
-    def delete_intent(endpoint):
-        pass
-
     # TODO refactor
     @staticmethod
     def create_intent(endpoint, name, message, status, visible, componentId, componentStatus, token):

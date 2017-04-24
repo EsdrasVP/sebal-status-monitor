@@ -16,10 +16,10 @@ class Monitor:
     def __init__(self):
         self.__config = ConfigParser.ConfigParser()
         self.__config.read(ApplicationConstants.DEFAULT_CONFIG_FILE_PATH)
-        self.__scheduler = Scheduler.__init__(self.__config)
-        self.__crawler = Crawler.__init__(self.__config)
-        self.__fetcher = Fetcher.__init__(self.__config)
-        self.__database = Database.__init__(self.__config)
+        self.__scheduler = Scheduler.__init__(config=self.__config)
+        self.__crawler = Crawler.__init__(config=self.__config)
+        self.__fetcher = Fetcher.__init__(config=self.__config)
+        self.__database = Database.__init__(config=self.__config)
         self.__status_type = self.config_section_map("SectionThree")['status_implementation']
         self.__status_implementation = CachetPlugin.__init__()
 
@@ -124,21 +124,21 @@ class Monitor:
                                                                                        DEFAULT_PROCESSED_STATE)
         # Number of processed images equal to 0 after three hours it's an operation failure. But we need to know if
         # these three hours already passed to register a failure.
-        self.__status_implementation.update_image_number_cachet(number_of_processed_images, ApplicationConstants.
-                                                                DEFAULT_PROCESSED_STATE, time.time())
+        self.__status_implementation.update_image_number(number_of_processed_images, ApplicationConstants.
+                                                         PROCESSED_IMAGES_METRIC_NAME, time.time())
 
     def get_downloaded_images(self, date):
         number_of_downloaded_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                         DEFAULT_DOWNLOADED_STATE)
-        self.__status_implementation.update_image_number_cachet(number_of_downloaded_images, ApplicationConstants.
-                                                                DEFAULT_DOWNLOADED_STATE, time.time())
+        self.__status_implementation.update_image_number(number_of_downloaded_images, ApplicationConstants.
+                                                         DOWNLOADED_IMAGES_METRIC_NAME, time.time())
 
     def get_submitted_images(self, date):
         number_of_submitted_images = self.get_number_of_images_with_state_in_last_hour(date, "not_downloaded")
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "selected")
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "downloading")
-        self.__status_implementation.update_image_number_cachet(number_of_submitted_images, ApplicationConstants.
-                                                                DEFAULT_SUBMITTED_STATE, time.time())
+        self.__status_implementation.update_image_number(number_of_submitted_images, ApplicationConstants.
+                                                         SUBMITTED_IMAGES_METRIC_NAME, time.time())
 
     def get_number_of_images_with_state_in_last_hour(self, date_prefix, state):
         try:
@@ -181,8 +181,10 @@ class Monitor:
                             " WHERE state = '" + state + "' AND utime::text LIKE '" + date_prefix + "%';"
             cursor.execute(statement_sql)
             for record in cursor:
-                return None  # only here for now to fix identation
-                # TODO: insert POST call to cachet sending image execution time
+                date = datetime.strptime(record, '%Y-%m-%d %H:%M:%S.%f')
+                epoch = datetime.datetime.utcfromtimestamp(0)
+                date_in_millis = (date - epoch).total_seconds() * 1000.0
+                self.__status_implementation.update_average_image_execution_time(date_in_millis, time.time())
         except psycopg2.Error as e:
             logging.error("Error while getting images in " + state + " state from database", e)
             return e.pgcode

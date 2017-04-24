@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 class Cachet:
     def __init__(self):
-        '''__init__ Constructor'''
         pass
 
     # FIXME attributes name
