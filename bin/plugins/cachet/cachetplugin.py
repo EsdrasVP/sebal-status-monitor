@@ -1,10 +1,6 @@
 import os
-import random
 import logging
 import ConfigParser
-
-from openstack import metric
-
 from bin.util.constants import ApplicationConstants
 from bin.plugins.cachet.cachet import Cachet
 from bin.plugins.cachet.cachet import MetricPoint
@@ -18,7 +14,6 @@ class CachetPlugin:
         self.__config.read(ApplicationConstants.DEFAULT_CONFIG_FILE_PATH)
         self.__cachet_host_url = self.config_section_map("SectionThree")['cachet_host_url']
         self.__cachet_token = self.config_section_map("SectionThree")['cachet_token']
-        self.__cachet_api = Cachet.__init__()
 
     def config_section_map(self, section):
         dict1 = {}
@@ -33,23 +28,23 @@ class CachetPlugin:
                 dict1[option] = None
         return dict1
 
-    def update_image_number_cachet(self, number_of_images, state, timestamp):
-        endpoint = os.path.join(self.__cachet_host_url, ApplicationConstants.METRICS_ENDPOINT)
-        metrics = self.__cachet_api.get_metrics(endpoint)
-        for current_metric in metrics:
-            if state in current_metric.get_name():
-                metric_point = MetricPoint.__init__(current_metric.get_id(), number_of_images, timestamp)
-                self.__cachet_api.create_metric_point(endpoint, metric_point, self.__cachet_token)
-
-    def set_incident(self):
-        # TODO: implement
-        return None
-
     def set_operation_failure(self, component_name, message):
         # TODO: implement
         # Here, we will register an operation failure and an incident. So it might change to receive a message based on
         # the failure for we to know, automatically, which failure caused the incident.
-        component = self.__cachet_api.get_component_by_name(component_name)
-        incident = Incident.__init__(random.seed(a=int))
-        self.__cachet_api.create_incident('endpoint', incident, self.__cachet_token)
-        return None
+        component = Cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
+        incident = Incident.__init__(message=message, component_id=component.get_id(), component_status=4)
+        Cachet.create_incident(endpoint=self.__cachet_host_url, incident=incident, token=self.__cachet_token)
+
+    def update_component_status(self, component_name, status):
+        component = Cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
+        Cachet.update_component_status(endpoint=self.__cachet_host_url, component=component, status=status,
+                                       token=self.__cachet_token)
+
+    def update_image_number_cachet(self, number_of_images, state, timestamp):
+        metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
+        for current_metric in metrics:
+            if state in current_metric.get_name():
+                metric_point = MetricPoint.__init__(current_metric.get_id(), number_of_images, timestamp)
+                Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
+                                           token=self.__cachet_token)

@@ -1,6 +1,7 @@
 import urllib
 import urllib2
 import logging
+import os
 
 CONST_SUFIX_INTENT_URL = "/api/v1/incidents"
 CONST_SUFIX_COMPONENTS_URL = "/api/v1/components"
@@ -11,6 +12,7 @@ CONST_HEADER_APP_KEY = "X-Cachet-Token"
 
 CONST_DELETE_METHOD = "DELETE"
 CONST_POST_METHOD = "POST"
+CONST_PUT_METHOD = "PUT"
 
 CONST_NAME_ATTR = "name"
 CONST_MESSAGE_ATTR = "message"
@@ -160,6 +162,28 @@ class CachetApiV1:
             return None
 
             # TODO implement
+
+    @staticmethod
+    def update_component_status(endpoint, name, status, group_id, token):
+        logger.debug("Updating component " + name + " status in %s." % (endpoint))
+        try:
+            method = CONST_PUT_METHOD
+            url = "%s%s" % (endpoint, CONST_SUFIX_COMPONENTS_URL)
+
+            datas = {CONST_NAME_ATTR: name, CONST_STATUS_ATTR: status}
+            if status is None:
+                datas.update({CONST_STATUS_ATTR: CONST_OPERATIONAL_STATUS})
+            data = urllib.urlencode(datas)
+
+            headers = {CONST_HEADER_APP_KEY: token}
+
+            request = urllib2.Request(os.path.join(url, group_id), data=data, headers=headers)
+            request.get_method = lambda: method
+            response = urllib2.urlopen(request)
+            return response.read()
+        except Exception as e:
+            logging.exception("Error while update component.")
+            return None
 
     @staticmethod
     def get_intents(endpoint):

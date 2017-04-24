@@ -16,12 +16,6 @@ class ApplicationConstants:
     DEFAULT_DOWNLOADED_STATE = "downloaded"
     DEFAULT_SUBMITTED_STATE = "submitted"
 
-    # Cachet constants
-    COMPONENTS_ENDPOINT = "api/v1/components"
-    COMPONENT_GROUPS_ENDPOINT = "api/v1/components/groups"
-    INCIDENTS_ENDPOINT = "api/v1/incidents"
-    METRICS_ENDPOINT = "api/v1/metrics"
-
     # Configuration constants
     DEFAULT_CONFIG_FILE_PATH = "resources/config.ini"  # TODO: see if this path is correct
     DEFAULT_STATUS_IMPLEMENTATION = "cachet"

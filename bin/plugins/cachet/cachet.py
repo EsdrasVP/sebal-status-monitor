@@ -3,7 +3,7 @@ import json
 import logging
 import sys
 import os.path
-from bin.cachet.cachet_api_v1 import CachetApiV1
+from bin.plugins.cachet.cachet_api_v1 import CachetApiV1
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -50,6 +50,19 @@ class Cachet:
     def create_component(endpoint, component, token):
         json_str = CachetApiV1.create_component(endpoint, component.get_name(), component.get_status(),
                                                 component.get_group_id(), token)
+        if json_str is None:
+            raise Exception(CONST_ERROR_MESSAGE_CACHET_API_V1)
+
+        json_object = json.loads(json_str)
+        component_json = json_object[CONST_DATA_JSON_ATTR]
+        id = component_json[CONST_ID_JSON_ATTR]
+        name = component_json[CONST_NAME_JSON_ATTR]
+        return Component(id=id, name=name)
+
+    @staticmethod
+    def update_component_status(endpoint, component, status, token):
+        json_str = CachetApiV1.update_component_status(endpoint, component.get_name(), status,
+                                                       component.get_group_id(), token)
         if json_str is None:
             raise Exception(CONST_ERROR_MESSAGE_CACHET_API_V1)
 
@@ -199,7 +212,8 @@ class GroupComponent:
 
 
 class Incident:
-    def __init__(self, id, name, message=None, status=None, visible=None, component_id=None, component_status=None):
+    def __init__(self, id=None, name=None, message=None, status=None, visible=None, component_id=None,
+                 component_status=None):
         self.__id = id
         self.__name = name
         self.__message = message

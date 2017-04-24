@@ -63,11 +63,10 @@ class Monitor:
     def set_scheduler_status(self):
         is_active = self.get_scheduler_status()
         if is_active == 0:
-            return None  # only here for now to fix identation
-            # TODO: call POST call to cachet with status 'operational'
+            self.__status_implementation.update_component_status(ApplicationConstants.SCHEDULER_COMPONENT, 1)
         else:
-            return None  # only here for now to fix identation
-            # TODO: call POST call to cachet with status 'major outage'
+            self.__status_implementation.set_operation_failure(ApplicationConstants.SCHEDULER_COMPONENT,
+                                                               ApplicationConstants.SCHEDULER_COMPONENT + " is down!")
 
     def get_scheduler_status(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
@@ -75,18 +74,16 @@ class Monitor:
         ssh_connection.login(self.__scheduler.get_scheduler_ip(), self.__scheduler.get_scheduler_username())
         scheduler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
-        if scheduler_status != 0:
-            self.__status_implementation.set_operation_failure()
         return scheduler_status
 
     def set_crawler_status(self):
         is_active = self.get_crawler_status()
         if is_active == 0:
             return None # only here for now to fix identation
-            # TODO: call POST call to cachet with status 'operational'
+            # TODO: call PUT call to cachet with status 'operational'
         else:
-            return None  # only here for now to fix identation
-            # TODO: call POST call to cachet with status 'major outage'
+            self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT,
+                                                               ApplicationConstants.CRAWLER_COMPONENT + " is down!")
 
     def get_crawler_status(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
@@ -94,18 +91,16 @@ class Monitor:
         ssh_connection.login(self.__crawler.get_crawler_ip(), self.__crawler.get_crawler_username())
         crawler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
-        if crawler_status != 0:
-            self.__status_implementation.set_operation_failure()
         return crawler_status
 
     def set_fetcher_status(self):
         is_active = self.get_fetcher_status()
         if is_active == 0:
             return None # only here for now to fix identation
-            # TODO: insert POST call to cachet with status 'operational'
+            # TODO: insert PUT call to cachet with status 'operational'
         else:
-            return None  # only here for now to fix identation
-            # TODO: insert POST call to cachet with status 'major outage'
+            self.__status_implementation.set_operation_failure(ApplicationConstants.FETCHER_COMPONENT,
+                                                               ApplicationConstants.FETCHER_COMPONENT + " is down!")
 
     def get_fetcher_status(self):
         options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
@@ -113,8 +108,6 @@ class Monitor:
         ssh_connection.login(self.__fetcher.get_fetcher_ip(), self.__fetcher.get_fetcher_username())
         fetcher_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
         # Check if spaces are correct
-        if fetcher_status != 0:
-            self.__status_implementation.set_operation_failure()
         return fetcher_status
 
     def images_status_control(self):
@@ -200,7 +193,9 @@ class Monitor:
         ssh_connection.login(self.__crawler.get_crawler_ip(), self.__crawler.get_crawler_username())
         disk_usage = ssh_connection.sendline("df -P | awk 'NR==2 {print $5}'").rsplit('%', 1)[0]
         if disk_usage >= 100:
-            self.__status_implementation.set_operation_failure()
+            self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT,
+                                                               ApplicationConstants.CRAWLER_COMPONENT
+                                                               + " disk is overloaded!")
         return disk_usage
 
     def get_swift_disk_usage(self):
