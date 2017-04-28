@@ -6,6 +6,9 @@ class ApplicationConstants:
     # Monitor constants
     DEFAULT_MONITOR_SLEEP_TIME = 3600
 
+    # Status implementation types
+    CACHET_TYPE = "cachet"
+
     # Components constants
     SCHEDULER_COMPONENT = "scheduler"
     CRAWLER_COMPONENT = "crawler"

@@ -1,14 +1,14 @@
-import ConfigParser
+import time
 import logging
 import psycopg2
-import time
 import subprocess
-from datetime import datetime, timedelta
-from dateutil import rrule
-from pexpect import pxssh
+import ConfigParser
 from time import strftime
-from bin.plugins.cachet.cachetplugin import CachetPlugin
+from pexpect import pxssh
+from dateutil import rrule
+from datetime import datetime, timedelta
 from bin.util.constants import ApplicationConstants
+from bin.plugins.cachet.cachetplugin import CachetPlugin
 
 
 class Monitor:
@@ -21,7 +21,8 @@ class Monitor:
         self.__fetcher = Fetcher.__init__(config=self.__config)
         self.__database = Database.__init__(config=self.__config)
         self.__status_type = self.config_section_map("SectionThree")['status_implementation']
-        self.__status_implementation = CachetPlugin.__init__()
+        if self.__status_type == ApplicationConstants.CACHET_TYPE:
+            self.__status_implementation = CachetPlugin.__init__()
 
     def config_section_map(self, section):
         dict1 = {}
