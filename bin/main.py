@@ -1,6 +1,6 @@
+import time
 from bin.monitor.monitor import Monitor
 from bin.util.constants import ApplicationConstants
-import time
 
 
 def init():

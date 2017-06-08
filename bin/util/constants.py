@@ -10,9 +10,9 @@ class ApplicationConstants:
     CACHET_TYPE = "cachet"
 
     # Components constants
-    SCHEDULER_COMPONENT = "scheduler"
-    CRAWLER_COMPONENT = "crawler"
-    FETCHER_COMPONENT = "fetcher"
+    SCHEDULER_COMPONENT = "Scheduler"
+    CRAWLER_COMPONENT = "Crawler"
+    FETCHER_COMPONENT = "Fetcher"
 
     # Database state constants
     DEFAULT_PROCESSED_STATE = "fetched"

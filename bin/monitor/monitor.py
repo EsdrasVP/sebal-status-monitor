@@ -1,7 +1,6 @@
 import time
 import logging
 import psycopg2
-import paramiko
 import subprocess
 import ConfigParser
 from time import strftime
@@ -23,6 +22,7 @@ class Monitor:
         self.__fetcher = Fetcher(config=self.__config)
         self.__database = Database(config=self.__config)
         self.__status_type = self.config_section_map("SectionThree")['status_implementation']
+        self.__private_key_file_path = self.config_section_map("SectionSix")['private_key_file_path']
         if self.__status_type == ApplicationConstants.CACHET_TYPE:
             self.__status_implementation = CachetPlugin()
 
@@ -72,11 +72,13 @@ class Monitor:
                                                                ApplicationConstants.SCHEDULER_COMPONENT + " is down!")
 
     def get_scheduler_status(self):
-        ssh = paramiko.SSHClient()
-        ssh.connect(hostname=self.__scheduler.get_scheduler_ip(), port=self.__scheduler.get_scheduler_port())
         command = 'ps xau | grep java | grep SebalMain | wc -l'
-        ssh_stdout = ssh.exec_command(command)
-        if ssh_stdout >= 1:
+        process_output = subprocess.check_output(["ssh", "-i", self.__private_key_file_path, "-o",
+                                                  "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                                                  self.__scheduler.get_scheduler_username() + "@" +
+                                                  self.__scheduler.get_scheduler_ip(), command])
+        process_count = int(process_output) - 1
+        if process_count >= 1:
             return 0
 
         return 1
@@ -90,11 +92,13 @@ class Monitor:
                                                                ApplicationConstants.CRAWLER_COMPONENT + " is down!")
 
     def get_crawler_status(self):
-        ssh = paramiko.SSHClient()
-        ssh.connect(hostname=self.__crawler.get_crawler_ip(), port=self.__crawler.get_crawler_port())
         command = 'ps xau | grep java | grep CrawlerMain | wc -l'
-        ssh_stdout = ssh.exec_command(command)
-        if ssh_stdout >= 1:
+        process_output = subprocess.check_output(["ssh", "-i", self.__private_key_file_path, "-o",
+                                                  "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                                                  self.__crawler.get_crawler_username() + "@" +
+                                                  self.__crawler.get_crawler_ip(), command])
+        process_count = int(process_output) - 1
+        if process_count >= 1:
             return 0
 
         return 1
@@ -108,11 +112,13 @@ class Monitor:
                                                                ApplicationConstants.FETCHER_COMPONENT + " is down!")
 
     def get_fetcher_status(self):
-        ssh = paramiko.SSHClient()
-        ssh.connect(hostname=self.__fetcher.get_fetcher_ip(), port=self.__fetcher.get_fetcher_port())
         command = 'ps xau | grep java | grep FetcherMain | wc -l'
-        ssh_stdout = ssh.exec_command(command)
-        if ssh_stdout >= 1:
+        process_output = subprocess.check_output(["ssh", "-i", self.__private_key_file_path, "-o",
+                                                  "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                                                  self.__fetcher.get_fetcher_username() + "@" +
+                                                  self.__fetcher.get_fetcher_ip(), command])
+        process_count = int(process_output) - 1
+        if process_count >= 1:
             return 0
 
         return 1
