@@ -9,6 +9,7 @@ from bin.plugins.cachet.cachet import Incident
 class CachetPlugin:
 
     def __init__(self):
+        self.__cachet = Cachet()
         self.__config = ConfigParser.ConfigParser()
         self.__config.read(ApplicationConstants.DEFAULT_CONFIG_FILE_PATH)
         self.__cachet_host_url = self.config_section_map("SectionThree")['cachet_host_url']
@@ -31,12 +32,12 @@ class CachetPlugin:
         # TODO: implement
         # Here, we will register an operation failure and an incident. So it might change to receive a message based on
         # the failure for we to know, automatically, which failure caused the incident.
-        component = Cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
-        incident = Incident.__init__(message=message, component_id=component.get_id(), component_status=4)
-        Cachet.create_incident(endpoint=self.__cachet_host_url, incident=incident, token=self.__cachet_token)
+        component = self.__cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
+        incident = Incident(message=message, component_id=component.get_id(), component_status=4)
+        self.__cachet.create_incident(endpoint=self.__cachet_host_url, incident=incident, token=self.__cachet_token)
 
     def update_component_status(self, component_name, status):
-        component = Cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
+        component = self.__cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
         Cachet.update_component_status(endpoint=self.__cachet_host_url, component=component, status=status,
                                        token=self.__cachet_token)
 
@@ -44,7 +45,7 @@ class CachetPlugin:
         metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
         for current_metric in metrics:
             if current_metric.get_name() == metric_name:
-                metric_point = MetricPoint.__init__(current_metric.get_id(), number_of_images, timestamp)
+                metric_point = MetricPoint(current_metric.get_id(), number_of_images, timestamp)
                 Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
                                            token=self.__cachet_token)
 
@@ -52,6 +53,6 @@ class CachetPlugin:
         metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
         for current_metric in metrics:
             if current_metric.get_name == ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME:
-                metric_point = MetricPoint.__init__(current_metric.get_id(), image_execution_time, timestamp)
+                metric_point = MetricPoint(current_metric.get_id(), image_execution_time, timestamp)
                 Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
                                            token=self.__cachet_token)

@@ -7,6 +7,9 @@ from time import strftime
 from pexpect import pxssh
 from dateutil import rrule
 from datetime import datetime, timedelta
+
+from matplotlib.cbook import Scheduler
+
 from bin.util.constants import ApplicationConstants
 from bin.plugins.cachet.cachetplugin import CachetPlugin
 
@@ -16,13 +19,13 @@ class Monitor:
     def __init__(self):
         self.__config = ConfigParser.ConfigParser()
         self.__config.read(ApplicationConstants.DEFAULT_CONFIG_FILE_PATH)
-        self.__scheduler = Scheduler.__init__(config=self.__config)
-        self.__crawler = Crawler.__init__(config=self.__config)
-        self.__fetcher = Fetcher.__init__(config=self.__config)
-        self.__database = Database.__init__(config=self.__config)
+        self.__scheduler = Scheduler(config=self.__config)
+        self.__crawler = Crawler(config=self.__config)
+        self.__fetcher = Fetcher(config=self.__config)
+        self.__database = Database(config=self.__config)
         self.__status_type = self.config_section_map("SectionThree")['status_implementation']
         if self.__status_type == ApplicationConstants.CACHET_TYPE:
-            self.__status_implementation = CachetPlugin.__init__()
+            self.__status_implementation = CachetPlugin()
 
     def config_section_map(self, section):
         dict1 = {}
@@ -201,7 +204,7 @@ class Monitor:
 
     # see if swift will be a component
     def get_swift_disk_usage(self):
-        swift = Swift.__init__(config=self.__config)
+        swift = Swift(config=self.__config)
         response = subprocess.check_output(['swift', '--os-auth-token', swift.get_auth_token(), '--os-storage-url',
                                             swift.get_storage_url(), 'stat', swift.get_container_name()])
         response_split = response.split()
