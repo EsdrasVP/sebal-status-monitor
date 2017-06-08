@@ -1,4 +1,3 @@
-from zeitgeist.client import Monitor
 from bin.monitor.monitor import Monitor
 from bin.util.constants import ApplicationConstants
 import time

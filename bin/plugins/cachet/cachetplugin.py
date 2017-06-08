@@ -29,9 +29,6 @@ class CachetPlugin:
         return dict1
 
     def set_operation_failure(self, component_name, message):
-        # TODO: implement
-        # Here, we will register an operation failure and an incident. So it might change to receive a message based on
-        # the failure for we to know, automatically, which failure caused the incident.
         component = self.__cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
         incident = Incident(message=message, component_id=component.get_id(), component_status=4)
         self.__cachet.create_incident(endpoint=self.__cachet_host_url, incident=incident, token=self.__cachet_token)

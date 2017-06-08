@@ -1,14 +1,13 @@
 import time
 import logging
 import psycopg2
+import paramiko
 import subprocess
 import ConfigParser
 from time import strftime
 from pexpect import pxssh
 from dateutil import rrule
 from datetime import datetime, timedelta
-
-from matplotlib.cbook import Scheduler
 
 from bin.util.constants import ApplicationConstants
 from bin.plugins.cachet.cachetplugin import CachetPlugin
@@ -73,12 +72,14 @@ class Monitor:
                                                                ApplicationConstants.SCHEDULER_COMPONENT + " is down!")
 
     def get_scheduler_status(self):
-        options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
-        ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__scheduler.get_scheduler_ip(), self.__scheduler.get_scheduler_username())
-        scheduler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
-        # Check if spaces are correct
-        return scheduler_status
+        ssh = paramiko.SSHClient()
+        ssh.connect(hostname=self.__scheduler.get_scheduler_ip(), port=self.__scheduler.get_scheduler_port())
+        command = 'ps xau | grep java | grep SebalMain | wc -l'
+        ssh_stdout = ssh.exec_command(command)
+        if ssh_stdout >= 1:
+            return 0
+
+        return 1
 
     def set_crawler_status(self):
         is_active = self.get_crawler_status()
@@ -89,12 +90,14 @@ class Monitor:
                                                                ApplicationConstants.CRAWLER_COMPONENT + " is down!")
 
     def get_crawler_status(self):
-        options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
-        ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__crawler.get_crawler_ip(), self.__crawler.get_crawler_username())
-        crawler_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
-        # Check if spaces are correct
-        return crawler_status
+        ssh = paramiko.SSHClient()
+        ssh.connect(hostname=self.__crawler.get_crawler_ip(), port=self.__crawler.get_crawler_port())
+        command = 'ps xau | grep java | grep CrawlerMain | wc -l'
+        ssh_stdout = ssh.exec_command(command)
+        if ssh_stdout >= 1:
+            return 0
+
+        return 1
 
     def set_fetcher_status(self):
         is_active = self.get_fetcher_status()
@@ -105,12 +108,14 @@ class Monitor:
                                                                ApplicationConstants.FETCHER_COMPONENT + " is down!")
 
     def get_fetcher_status(self):
-        options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
-        ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__fetcher.get_fetcher_ip(), self.__fetcher.get_fetcher_username())
-        fetcher_status = ssh_connection.sendline('if pgrep -x "java" > /dev/null; then; exit 0; else; exit 1; fi')
-        # Check if spaces are correct
-        return fetcher_status
+        ssh = paramiko.SSHClient()
+        ssh.connect(hostname=self.__fetcher.get_fetcher_ip(), port=self.__fetcher.get_fetcher_port())
+        command = 'ps xau | grep java | grep FetcherMain | wc -l'
+        ssh_stdout = ssh.exec_command(command)
+        if ssh_stdout >= 1:
+            return 0
+
+        return 1
 
     def images_status_control(self):
         date_least_one_hour = datetime.today() - timedelta(hours=1)
