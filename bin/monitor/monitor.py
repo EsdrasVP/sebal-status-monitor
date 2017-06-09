@@ -40,7 +40,7 @@ class Monitor:
         return dict1
 
     def start(self):
-        #self.check_components()
+        self.check_components()
         self.images_status_control()
         self.get_crawler_disk_usage()
         self.get_swift_disk_usage()
