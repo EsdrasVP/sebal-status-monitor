@@ -30,8 +30,8 @@ class CachetPlugin:
 
     def set_operation_failure(self, component_name, message):
         component = self.__cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
-        incident = Incident(message=message, component_id=component.get_id(), visible=True, status=0,
-                            component_status=4)
+        incident = Incident(name=component_name + "_incident", message=message, component_id=component.get_id(),
+                            visible=1, status=0, component_status=4)
         self.__cachet.create_incident(endpoint=self.__cachet_host_url, incident=incident, token=self.__cachet_token)
 
     def update_component_status(self, component_name, status):
@@ -43,7 +43,7 @@ class CachetPlugin:
         metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
         for current_metric in metrics:
             if current_metric.get_name() == metric_name:
-                metric_point = MetricPoint(current_metric.get_id(), number_of_images, timestamp)
+                metric_point = MetricPoint(current_metric.get_id(), number_of_images, int(timestamp))
                 Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
                                            token=self.__cachet_token)
 
@@ -51,6 +51,6 @@ class CachetPlugin:
         metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
         for current_metric in metrics:
             if current_metric.get_name == ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME:
-                metric_point = MetricPoint(current_metric.get_id(), image_execution_time, timestamp)
+                metric_point = MetricPoint(current_metric.get_id(), image_execution_time, int(timestamp))
                 Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
                                            token=self.__cachet_token)

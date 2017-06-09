@@ -40,7 +40,7 @@ class Monitor:
         return dict1
 
     def start(self):
-        self.check_components()
+        #self.check_components()
         self.images_status_control()
         self.get_crawler_disk_usage()
         self.get_swift_disk_usage()
@@ -125,7 +125,7 @@ class Monitor:
 
     def images_status_control(self):
         date_least_one_hour = datetime.today() - timedelta(hours=1)
-        date = strftime("%Y-%m-%d %H", date_least_one_hour)
+        date = strftime("%Y-%m-%d %H", date_least_one_hour.timetuple())
         self.get_processed_images(date)
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
@@ -155,9 +155,10 @@ class Monitor:
 
     def get_number_of_images_with_state_in_last_hour(self, date_prefix, state):
         try:
-            connection = psycopg2.connect(self.__database.get_db_name(), self.__database.get_db_user(),
-                                          self.__database.get_db_password(), self.__database.get_db_host(),
-                                          self.__database.get_db_port(), sslmode='verify-full')
+            connection = psycopg2.connect(database=self.__database.get_db_name(), user=self.__database.get_db_user(),
+                                          password=self.__database.get_db_password(),
+                                          host=self.__database.get_db_host(),
+                                          port=self.__database.get_db_port())
             cursor = connection.cursor()
 
             # Date prefix must follow an established format
@@ -176,16 +177,17 @@ class Monitor:
 
         processed_images = 0
         for date in rrule.rrule(rrule.HOURLY, dtstart=last_hours_date_time, until=now):
-            formatted_date = strftime("%Y-%m-%d %H", date)
+            formatted_date = strftime("%Y-%m-%d %H", date.timetuple())
             processed_images += self.get_number_of_images_with_state_in_last_hour(formatted_date,
                                                                                   ApplicationConstants.
                                                                                   DEFAULT_PROCESSED_STATE)
 
     def set_last_hour_timestamps(self, date_prefix, state):
         try:
-            connection = psycopg2.connect(self.__database.get_db_name(), self.__database.get_db_user(),
-                                          self.__database.get_db_password(), self.__database.get_db_host(),
-                                          self.__database.get_db_port(), sslmode='verify-full')
+            connection = psycopg2.connect(database=self.__database.get_db_name(), user=self.__database.get_db_user(),
+                                          password=self.__database.get_db_password(),
+                                          host=self.__database.get_db_host(),
+                                          port=self.__database.get_db_port())
             cursor = connection.cursor()
 
             # Date prefix must follow an established format
@@ -194,7 +196,7 @@ class Monitor:
                             " WHERE state = '" + state + "' AND utime::text LIKE '" + date_prefix + "%';"
             cursor.execute(statement_sql)
             for record in cursor:
-                date = datetime.strptime(record, '%Y-%m-%d %H:%M:%S.%f')
+                date = datetime.strptime(record.timetuple(), '%Y-%m-%d %H:%M:%S.%f')
                 epoch = datetime.datetime.utcfromtimestamp(0)
                 date_in_millis = (date - epoch).total_seconds() * 1000.0
                 self.__status_implementation.update_average_image_execution_time(date_in_millis, time.time())
@@ -203,11 +205,13 @@ class Monitor:
             return e.pgcode
 
     def get_crawler_disk_usage(self):
-        options = {"StrictHostKeyChecking": "yes", "UserKnownHostsFile": "/dev/null"}
-        ssh_connection = pxssh.pxssh(options)
-        ssh_connection.login(self.__crawler.get_crawler_ip(), self.__crawler.get_crawler_username())
-        disk_usage = ssh_connection.sendline("df -P | awk 'NR==2 {print $5}'").rsplit('%', 1)[0]
-        if disk_usage >= 100:
+        command = "df -P | awk 'NR==2 {print $5}'"
+        process_output = subprocess.check_output(["ssh", "-i", self.__private_key_file_path, "-o",
+                                                  "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                                                  self.__crawler.get_crawler_username() + "@" +
+                                                  self.__crawler.get_crawler_ip(), command])
+        disk_usage = process_output.rsplit('%', 1)[0]
+        if int(disk_usage) >= 100:
             self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT,
                                                                ApplicationConstants.CRAWLER_COMPONENT
                                                                + " disk is overloaded!")
@@ -216,13 +220,12 @@ class Monitor:
     # see if swift will be a component
     def get_swift_disk_usage(self):
         swift = Swift(config=self.__config)
-        response = subprocess.check_output(['swift', '--os-auth-token', swift.get_auth_token(), '--os-storage-url',
-                                            swift.get_storage_url(), 'stat', swift.get_container_name()])
+        response = subprocess.check_output(["swift", "--os-auth-token", swift.get_auth_token(), "--os-storage-url",
+                                            swift.get_storage_url(), "stat", swift.get_container_name()])
         response_split = response.split()
-        bytes_response_split = response_split[3].split(":")
-        total_used_bytes = bytes_response_split[2]
+        total_used_bytes = response_split[7]
         used_disk_in_gb = float(total_used_bytes)/1073741824
-        disk_usage = (100 * used_disk_in_gb) / swift.get_total_disk()
+        disk_usage = (100 * used_disk_in_gb) / float(swift.get_total_disk())
         return disk_usage
 
 
@@ -377,9 +380,10 @@ class Swift:
         ldap_user_id = self.config_section_map("SectionFour")['ldap_user_id']
         ldap_password = self.config_section_map("SectionFour")['ldap_password']
         ldap_auth_url = self.config_section_map("SectionFour")['ldap_auth_url']
-        ldap_token = subprocess.check_output(['bash', fogbow_cli_path, 'token', '--create', '-DprojectId='
-                                              + ldap_project_id, '-DuserId=' + ldap_user_id, '-Dpassword='
-                                              + ldap_password, '-DauthUrl=' + ldap_auth_url, '--type', 'openstack'])
+        ldap_token = subprocess.check_output(['bash', fogbow_cli_path, 'token', '--create',
+                                              '-DprojectId=' + ldap_project_id, '-DuserId=' + ldap_user_id,
+                                              '-Dpassword=' + ldap_password, '-DauthUrl=' + ldap_auth_url, '--type',
+                                              'openstack']).strip()
         return ldap_token
 
     def config_section_map(self, section):
