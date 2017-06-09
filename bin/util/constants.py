@@ -24,6 +24,8 @@ class ApplicationConstants:
     SUBMITTED_IMAGES_METRIC_NAME = "Submitted Images"
     DOWNLOADED_IMAGES_METRIC_NAME = "Downloaded Images"
     AVG_EXECUTION_TIME_METRIC_NAME = "Average Execution Time"
+    CRAWLER_DISK_USAGE_METRIC_NAME = "Crawler Disk Usage"
+    SWIFT_DISK_USAGE_METRIC_NAME = "Swift Disk Usage"
 
     # Configuration constants
     DEFAULT_CONFIG_FILE_PATH = "resources/config.ini"  # TODO: see if this path is correct

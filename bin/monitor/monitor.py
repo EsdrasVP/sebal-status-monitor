@@ -4,7 +4,6 @@ import psycopg2
 import subprocess
 import ConfigParser
 from time import strftime
-from pexpect import pxssh
 from dateutil import rrule
 from datetime import datetime, timedelta
 
@@ -124,33 +123,38 @@ class Monitor:
         return 1
 
     def images_status_control(self):
-        date_least_one_hour = datetime.today() - timedelta(hours=1)
-        date = strftime("%Y-%m-%d %H", date_least_one_hour.timetuple())
+        date = self.get_last_one_hour_date()
         self.get_processed_images(date)
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
         self.set_last_hour_timestamps(date, ApplicationConstants.DEFAULT_PROCESSED_STATE)
         self.check_last_hours_efficiency()
 
+    @staticmethod
+    def get_last_one_hour_date():
+        date_least_one_hour = datetime.today() - timedelta(hours=1)
+        date = strftime("%Y-%m-%d %H", date_least_one_hour.timetuple())
+        return date
+
     def get_processed_images(self, date):
         number_of_processed_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                        DEFAULT_PROCESSED_STATE)
         # Number of processed images equal to 0 after three hours it's an operation failure. But we need to know if
         # these three hours already passed to register a failure.
-        self.__status_implementation.update_image_number(number_of_processed_images, ApplicationConstants.
+        self.__status_implementation.update_metric_point(number_of_processed_images, ApplicationConstants.
                                                          PROCESSED_IMAGES_METRIC_NAME, time.time())
 
     def get_downloaded_images(self, date):
         number_of_downloaded_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                         DEFAULT_DOWNLOADED_STATE)
-        self.__status_implementation.update_image_number(number_of_downloaded_images, ApplicationConstants.
+        self.__status_implementation.update_metric_point(number_of_downloaded_images, ApplicationConstants.
                                                          DOWNLOADED_IMAGES_METRIC_NAME, time.time())
 
     def get_submitted_images(self, date):
         number_of_submitted_images = self.get_number_of_images_with_state_in_last_hour(date, "not_downloaded")
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "selected")
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "downloading")
-        self.__status_implementation.update_image_number(number_of_submitted_images, ApplicationConstants.
+        self.__status_implementation.update_metric_point(number_of_submitted_images, ApplicationConstants.
                                                          SUBMITTED_IMAGES_METRIC_NAME, time.time())
 
     def get_number_of_images_with_state_in_last_hour(self, date_prefix, state):
@@ -199,10 +203,28 @@ class Monitor:
                 date = datetime.strptime(record.timetuple(), '%Y-%m-%d %H:%M:%S.%f')
                 epoch = datetime.datetime.utcfromtimestamp(0)
                 date_in_millis = (date - epoch).total_seconds() * 1000.0
-                self.__status_implementation.update_average_image_execution_time(date_in_millis, time.time())
+                self.__status_implementation.update_metric_point(date_in_millis,
+                                                                 ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME,
+                                                                 time.time())
         except psycopg2.Error as e:
             logging.error("Error while getting images in " + state + " state from database", e)
             return e.pgcode
+
+    def set_disk_statistics(self):
+        self.set_crawler_disk_usage()
+        self.get_swift_disk_usage()
+
+    def set_crawler_disk_usage(self):
+        crawler_disk_usage = self.get_crawler_disk_usage()
+        self.__status_implementation.update_metric_point(crawler_disk_usage,
+                                                         ApplicationConstants.CRAWLER_DISK_USAGE_METRIC_NAME,
+                                                         time.time())
+
+    def set_swift_disk_usage(self):
+        swift_disk_usage = self.get_swift_disk_usage()
+        self.__status_implementation.update_metric_point(swift_disk_usage,
+                                                         ApplicationConstants.SWIFT_DISK_USAGE_METRIC_NAME,
+                                                         time.time())
 
     def get_crawler_disk_usage(self):
         command = "df -P | awk 'NR==2 {print $5}'"
