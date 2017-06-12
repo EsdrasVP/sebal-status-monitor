@@ -41,8 +41,7 @@ class Monitor:
     def start(self):
         self.check_components()
         self.images_status_control()
-        self.get_crawler_disk_usage()
-        self.get_swift_disk_usage()
+        self.set_disk_statistics()
 
     def check_components(self):
         try:
@@ -212,7 +211,7 @@ class Monitor:
 
     def set_disk_statistics(self):
         self.set_crawler_disk_usage()
-        self.get_swift_disk_usage()
+        self.set_swift_disk_usage()
 
     def set_crawler_disk_usage(self):
         crawler_disk_usage = self.get_crawler_disk_usage()
