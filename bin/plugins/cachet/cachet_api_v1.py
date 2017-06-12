@@ -164,7 +164,7 @@ class CachetApiV1:
             # TODO implement
 
     @staticmethod
-    def update_component_status(endpoint, name, status, group_id, token):
+    def update_component_status(endpoint, name, status, id, token):
         logger.debug("Updating component " + name + " status in %s." % (endpoint))
         try:
             method = CONST_PUT_METHOD
@@ -177,7 +177,7 @@ class CachetApiV1:
 
             headers = {CONST_HEADER_APP_KEY: token}
 
-            request = urllib2.Request(os.path.join(url, group_id), data=data, headers=headers)
+            request = urllib2.Request(os.path.join(url, str(id)), data=data, headers=headers)
             request.get_method = lambda: method
             response = urllib2.urlopen(request)
             return response.read()

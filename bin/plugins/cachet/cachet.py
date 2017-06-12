@@ -10,6 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 CONST_DATA_JSON_ATTR = "data"
 CONST_NAME_JSON_ATTR = "name"
 CONST_ID_JSON_ATTR = "id"
+CONST_GROUP_ID_JSON_ATTR = "group_id"
 
 CONST_ERROR_MESSAGE_CACHET_API_V1 = "CachetApiV1 Error."
 
@@ -33,7 +34,8 @@ class Cachet:
         for component_json in components_json_array:
             name = component_json[CONST_NAME_JSON_ATTR]
             id = component_json[CONST_ID_JSON_ATTR]
-            components.append(Component(id=id, name=name))
+            group_id = component_json[CONST_GROUP_ID_JSON_ATTR]
+            components.append(Component(id=id, name=name, group_id=group_id))
         return components
 
     def get_component_by_name(self, endpoint, name):
@@ -61,7 +63,7 @@ class Cachet:
     @staticmethod
     def update_component_status(endpoint, component, status, token):
         json_str = CachetApiV1.update_component_status(endpoint, component.get_name(), status,
-                                                       component.get_group_id(), token)
+                                                       component.get_id(), token)
         if json_str is None:
             raise Exception(CONST_ERROR_MESSAGE_CACHET_API_V1)
 
