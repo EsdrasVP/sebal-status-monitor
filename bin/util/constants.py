@@ -15,9 +15,12 @@ class ApplicationConstants:
     FETCHER_COMPONENT = "Fetcher"
 
     # Database state constants
-    DEFAULT_PROCESSED_STATE = "fetched"
+    DEFAULT_NOT_DOWNLOADED_STATE = "not_downloaded"
+    DEFAULT_SELECTED_STATE = "selected"
+    DEFAULT_DOWNLOADING_STATE = "downloading"
     DEFAULT_DOWNLOADED_STATE = "downloaded"
     DEFAULT_SUBMITTED_STATE = "submitted"
+    DEFAULT_PROCESSED_STATE = "fetched"
 
     # Metric constants
     PROCESSED_IMAGES_METRIC_NAME = "Processed Images"

@@ -126,8 +126,8 @@ class Monitor:
         self.get_processed_images(date)
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
-        self.set_last_hour_timestamps(date, ApplicationConstants.DEFAULT_PROCESSED_STATE)
-        self.check_last_hours_efficiency()
+        self.set_last_hour_timestamps(date)
+        #self.check_last_hours_efficiency()
 
     @staticmethod
     def get_last_one_hour_date():
@@ -150,9 +150,12 @@ class Monitor:
                                                          DOWNLOADED_IMAGES_METRIC_NAME, time.time())
 
     def get_submitted_images(self, date):
-        number_of_submitted_images = self.get_number_of_images_with_state_in_last_hour(date, "not_downloaded")
-        number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "selected")
-        number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, "downloading")
+        number_of_submitted_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
+                                                                                       DEFAULT_NOT_DOWNLOADED_STATE)
+        number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
+                                                                                        DEFAULT_SELECTED_STATE)
+        number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
+                                                                                        DEFAULT_DOWNLOADING_STATE)
         self.__status_implementation.update_metric_point(number_of_submitted_images, ApplicationConstants.
                                                          SUBMITTED_IMAGES_METRIC_NAME, time.time())
 
@@ -185,7 +188,7 @@ class Monitor:
                                                                                   ApplicationConstants.
                                                                                   DEFAULT_PROCESSED_STATE)
 
-    def set_last_hour_timestamps(self, date_prefix, state):
+    def set_last_hour_timestamps(self, date_prefix):
         try:
             connection = psycopg2.connect(database=self.__database.get_db_name(), user=self.__database.get_db_user(),
                                           password=self.__database.get_db_password(),
@@ -196,7 +199,8 @@ class Monitor:
             # Date prefix must follow an established format
             # ex.: 2017-04-12 18 (date previous_hour)
             statement_sql = "SELECT utime FROM " + self.__database.get_db_images_table_name() + \
-                            " WHERE state = '" + state + "' AND utime::text LIKE '" + date_prefix + "%';"
+                            " WHERE state = '" + ApplicationConstants.DEFAULT_PROCESSED_STATE + \
+                            "' AND utime::text LIKE '" + date_prefix + "%';"
             cursor.execute(statement_sql)
             for record in cursor:
                 date = datetime.strptime(record.timetuple(), '%Y-%m-%d %H:%M:%S.%f')
@@ -206,7 +210,8 @@ class Monitor:
                                                                  ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME,
                                                                  time.time())
         except psycopg2.Error as e:
-            logging.error("Error while getting images in " + state + " state from database", e)
+            logging.error("Error while getting images in " + ApplicationConstants.DEFAULT_PROCESSED_STATE +
+                          " state from database", e)
             return e.pgcode
 
     def set_disk_statistics(self):

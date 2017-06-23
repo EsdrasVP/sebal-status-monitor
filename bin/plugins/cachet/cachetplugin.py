@@ -2,6 +2,7 @@ import logging
 import ConfigParser
 from bin.util.constants import ApplicationConstants
 from bin.plugins.cachet.cachet import Cachet
+from bin.plugins.cachet.cachet import Metric
 from bin.plugins.cachet.cachet import MetricPoint
 from bin.plugins.cachet.cachet import Incident
 
