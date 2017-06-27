@@ -13,6 +13,7 @@ class ApplicationConstants:
     SCHEDULER_COMPONENT = "Scheduler"
     CRAWLER_COMPONENT = "Crawler"
     FETCHER_COMPONENT = "Fetcher"
+    DEFAULT_CRAWLER_USERNAME = "ubuntu"
 
     # Database state constants
     DEFAULT_NOT_DOWNLOADED_STATE = "not_downloaded"

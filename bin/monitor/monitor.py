@@ -17,7 +17,7 @@ class Monitor:
         self.__config = ConfigParser.ConfigParser()
         self.__config.read(ApplicationConstants.DEFAULT_CONFIG_FILE_PATH)
         self.__scheduler = Scheduler(config=self.__config)
-        self.__crawler = Crawler(config=self.__config)
+        self.__crawlers_list = []
         self.__fetcher = Fetcher(config=self.__config)
         self.__database = Database(config=self.__config)
         self.__status_type = self.config_section_map("SectionThree")['status_implementation']
@@ -39,9 +39,31 @@ class Monitor:
         return dict1
 
     def start(self):
+        self.get_all_crawlers()
         self.check_components()
         self.images_status_control()
         self.set_disk_statistics()
+
+    def get_all_crawlers(self):
+        try:
+            connection = psycopg2.connect(database=self.__database.get_db_name(), user=self.__database.get_db_user(),
+                                          password=self.__database.get_db_password(),
+                                          host=self.__database.get_db_host(),
+                                          port=self.__database.get_db_port())
+            cursor = connection.cursor()
+
+            statement_sql = "SELECT * FROM " + self.__database.get_db_deploy_config_table_name() + ";"
+            cursor.execute(statement_sql)
+
+            crawler_list = []
+            for row in cursor:
+                crawler_list.append(Crawler(ip=row[0], port=row[3],
+                                            username=ApplicationConstants.DEFAULT_CRAWLER_USERNAME, site=row[2]))
+
+            self.__crawlers_list = crawler_list
+        except psycopg2.Error as e:
+            logging.error("Error while getting crawlers from database", e)
+            return e.pgcode
 
     def check_components(self):
         try:
@@ -82,19 +104,25 @@ class Monitor:
         return 1
 
     def set_crawler_status(self):
-        is_active = self.get_crawler_status()
-        if is_active == 0:
-            self.__status_implementation.update_component_status(ApplicationConstants.CRAWLER_COMPONENT, 1)
-        else:
-            self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT,
-                                                               ApplicationConstants.CRAWLER_COMPONENT + " is down!")
+        for crawler in self.__crawlers_list:
+            self.update_crawler_status(crawler.get_crawler_ip(), crawler.get_crawler_username(),
+                                       crawler.get_crawler_site())
 
-    def get_crawler_status(self):
+    def update_crawler_status(self, crawler_ip, crawler_username, crawler_site):
+        is_active = self.get_crawler_status(crawler_ip, crawler_username)
+        if is_active == 0:
+            self.__status_implementation.update_component_status(ApplicationConstants.CRAWLER_COMPONENT +
+                                                                 crawler_site, 1)
+        else:
+            self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT + crawler_site,
+                                                               ApplicationConstants.CRAWLER_COMPONENT +
+                                                               crawler_site + " is down!")
+
+    def get_crawler_status(self, crawler_ip, crawler_username):
         command = 'ps xau | grep java | grep CrawlerMain | wc -l'
         process_output = subprocess.check_output(["ssh", "-i", self.__private_key_file_path, "-o",
                                                   "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
-                                                  self.__crawler.get_crawler_username() + "@" +
-                                                  self.__crawler.get_crawler_ip(), command])
+                                                  crawler_username + "@" + crawler_ip, command])
         process_count = int(process_output) - 1
         if process_count >= 1:
             return 0
@@ -127,7 +155,7 @@ class Monitor:
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
         self.set_last_hour_timestamps(date)
-        #self.check_last_hours_efficiency()
+        self.check_last_hours_efficiency()
 
     @staticmethod
     def get_last_one_hour_date():
@@ -202,13 +230,13 @@ class Monitor:
                             " WHERE state = '" + ApplicationConstants.DEFAULT_PROCESSED_STATE + \
                             "' AND utime::text LIKE '" + date_prefix + "%';"
             cursor.execute(statement_sql)
-            for record in cursor:
-                date = datetime.strptime(record.timetuple(), '%Y-%m-%d %H:%M:%S.%f')
-                epoch = datetime.datetime.utcfromtimestamp(0)
-                date_in_millis = (date - epoch).total_seconds() * 1000.0
-                self.__status_implementation.update_metric_point(date_in_millis,
-                                                                 ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME,
-                                                                 time.time())
+            response = cursor.fetchone()
+            date = datetime.strptime('%Y-%m-%d %H:%M:%S.%f', str(response[0].timetuple()))
+            epoch = datetime.datetime.utcfromtimestamp(0)
+            date_in_millis = (date - epoch).total_seconds() * 1000.0
+            self.__status_implementation.update_metric_point(date_in_millis,
+                                                             ApplicationConstants.AVG_EXECUTION_TIME_METRIC_NAME,
+                                                             time.time())
         except psycopg2.Error as e:
             logging.error("Error while getting images in " + ApplicationConstants.DEFAULT_PROCESSED_STATE +
                           " state from database", e)
@@ -219,10 +247,15 @@ class Monitor:
         self.set_swift_disk_usage()
 
     def set_crawler_disk_usage(self):
-        crawler_disk_usage = self.get_crawler_disk_usage()
+        for crawler in self.__crawlers_list:
+            self.get_crawler_disk_statistic(crawler.get_crawler_ip, crawler.get_crawler_username,
+                                            crawler.get_crawler_site)
+
+    def get_crawler_disk_statistic(self, crawler_ip, crawler_username, crawler_site):
+        crawler_disk_usage = self.get_crawler_disk_usage(crawler_ip, crawler_username)
         self.__status_implementation.update_metric_point(crawler_disk_usage,
-                                                         ApplicationConstants.CRAWLER_DISK_USAGE_METRIC_NAME,
-                                                         time.time())
+                                                         ApplicationConstants.CRAWLER_DISK_USAGE_METRIC_NAME +
+                                                         crawler_site, time.time())
 
     def set_swift_disk_usage(self):
         swift_disk_usage = self.get_swift_disk_usage()
@@ -230,12 +263,11 @@ class Monitor:
                                                          ApplicationConstants.SWIFT_DISK_USAGE_METRIC_NAME,
                                                          time.time())
 
-    def get_crawler_disk_usage(self):
+    def get_crawler_disk_usage(self, crawler_ip, crawler_username):
         command = "df -P | awk 'NR==2 {print $5}'"
         process_output = subprocess.check_output(["ssh", "-i", self.__private_key_file_path, "-o",
                                                   "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
-                                                  self.__crawler.get_crawler_username() + "@" +
-                                                  self.__crawler.get_crawler_ip(), command])
+                                                  crawler_username + "@" + crawler_ip, command])
         disk_usage = process_output.rsplit('%', 1)[0]
         if int(disk_usage) >= 100:
             self.__status_implementation.set_operation_failure(ApplicationConstants.CRAWLER_COMPONENT,
@@ -288,24 +320,11 @@ class Scheduler(object):
 
 class Crawler(object):
 
-    def __init__(self, config):
-        self.__config = config
-        self.__crawler_ip = self.config_section_map("SectionOne")['crawler_ip']
-        self.__crawler_port = self.config_section_map("SectionOne")['crawler_port']
-        self.__crawler_username = self.config_section_map("SectionOne")['crawler_username']
-
-    def config_section_map(self, section):
-        dict1 = {}
-        options = self.__config.options(section)
-        for option in options:
-            try:
-                dict1[option] = self.__config.get(section, option)
-                if dict1[option] == -1:
-                    logging.debug("skip: %s", option)
-            except Exception as e:
-                logging.debug(str(e))
-                dict1[option] = None
-        return dict1
+    def __init__(self, ip, port, username, site):
+        self.__crawler_ip = ip
+        self.__crawler_port = port
+        self.__crawler_username = username
+        self.__crawler_site = site
 
     def get_crawler_ip(self):
         return self.__crawler_ip
@@ -315,6 +334,9 @@ class Crawler(object):
 
     def get_crawler_username(self):
         return self.__crawler_username
+
+    def get_crawler_site(self):
+        return self.__crawler_site
 
 
 class Fetcher(object):
@@ -358,6 +380,7 @@ class Database(object):
         self.__db_host = self.config_section_map("SectionTwo")['db_host']
         self.__db_port = self.config_section_map("SectionTwo")['db_port']
         self.__db_images_table_name = self.config_section_map("SectionTwo")['db_images_table_name']
+        self.__db_deploy_config_table_name = self.config_section_map("SectionTwo")['db_deploy_config_table_name']
 
     def config_section_map(self, section):
         dict1 = {}
@@ -389,6 +412,9 @@ class Database(object):
 
     def get_db_images_table_name(self):
         return self.__db_images_table_name
+
+    def get_db_deploy_config_table_name(self):
+        return self.__db_deploy_config_table_name
 
 
 class Swift:
