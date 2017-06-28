@@ -38,21 +38,29 @@ class CachetPlugin:
 
     def update_component_status(self, component_name, status):
         component = self.__cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
-        Cachet.update_component_status(endpoint=self.__cachet_host_url, component=component, status=status,
-                                       token=self.__cachet_token)
-
-    def update_metric_point(self, point, metric_name, timestamp):
-        metrics = Cachet.get_metrics(endpoint=self.__cachet_host_url)
-        for current_metric in metrics:
-            if current_metric.get_name() == metric_name:
-                metric_point = MetricPoint(current_metric.get_id(), point, int(timestamp))
-                Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
-                                           token=self.__cachet_token)
+        self.__cachet.update_component_status(endpoint=self.__cachet_host_url, component=component, status=status,
+                                              token=self.__cachet_token)
 
     def get_component_by_name(self, component_name):
-        return Cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
+        return self.__cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
 
     def create_component_by_name(self, component_name):
         component = Component(name=component_name)
-        Cachet.create_component(endpoint=self.__cachet_host_url, component=component, token=self.__cachet_token)
+        self.__cachet.create_component(endpoint=self.__cachet_host_url, component=component, token=self.__cachet_token)
         logging.debug("Creating component %s" % component.get_name())
+
+    def get_metric_by_name(self, metric_name):
+        return self.__cachet.get_metric_by_name(endpoint=self.__cachet_host_url, name=metric_name)
+
+    def create_metric_by_name(self, metric_name):
+        metric = Metric(name=metric_name)
+        self.__cachet.create_metric(endpoint=self.__cachet_host_url, metric=metric, token=self.__cachet_token)
+        logging.debug("Creating metric %s" % metric.get_name())
+
+    def update_metric_point(self, point, metric_name, timestamp):
+        metrics = self.__cachet.get_metrics(endpoint=self.__cachet_host_url)
+        for current_metric in metrics:
+            if current_metric.get_name() == metric_name:
+                metric_point = MetricPoint(current_metric.get_id(), point, int(timestamp))
+                self.__cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
+                                                  token=self.__cachet_token)

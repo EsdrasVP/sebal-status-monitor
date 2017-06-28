@@ -169,8 +169,8 @@ class Monitor:
         self.get_processed_images(date)
         self.get_downloaded_images(date)
         self.get_submitted_images(date)
-        self.set_last_hour_timestamps(date)
-        self.check_last_hours_efficiency()
+        #self.set_last_hour_timestamps(date)
+        #self.check_last_hours_efficiency()
 
     @staticmethod
     def get_last_one_hour_date():
@@ -183,12 +183,19 @@ class Monitor:
                                                                                        DEFAULT_PROCESSED_STATE)
         # Number of processed images equal to 0 after three hours it's an operation failure. But we need to know if
         # these three hours already passed to register a failure.
+        metric = self.__status_implementation.get_metric_by_name(ApplicationConstants.PROCESSED_IMAGES_METRIC_NAME)
+        if (metric is None) or (not metric):
+            self.__status_implementation.create_metric_by_name(ApplicationConstants.PROCESSED_IMAGES_METRIC_NAME)
         self.__status_implementation.update_metric_point(number_of_processed_images, ApplicationConstants.
                                                          PROCESSED_IMAGES_METRIC_NAME, time.time())
 
     def get_downloaded_images(self, date):
         number_of_downloaded_images = self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                         DEFAULT_DOWNLOADED_STATE)
+
+        metric = self.__status_implementation.get_metric_by_name(ApplicationConstants.DOWNLOADED_IMAGES_METRIC_NAME)
+        if (metric is None) or (not metric):
+            self.__status_implementation.create_metric_by_name(ApplicationConstants.DOWNLOADED_IMAGES_METRIC_NAME)
         self.__status_implementation.update_metric_point(number_of_downloaded_images, ApplicationConstants.
                                                          DOWNLOADED_IMAGES_METRIC_NAME, time.time())
 
@@ -199,6 +206,10 @@ class Monitor:
                                                                                         DEFAULT_SELECTED_STATE)
         number_of_submitted_images += self.get_number_of_images_with_state_in_last_hour(date, ApplicationConstants.
                                                                                         DEFAULT_DOWNLOADING_STATE)
+
+        metric = self.__status_implementation.get_metric_by_name(ApplicationConstants.SUBMITTED_IMAGES_METRIC_NAME)
+        if (metric is None) or (not metric):
+            self.__status_implementation.create_metric_by_name(ApplicationConstants.SUBMITTED_IMAGES_METRIC_NAME)
         self.__status_implementation.update_metric_point(number_of_submitted_images, ApplicationConstants.
                                                          SUBMITTED_IMAGES_METRIC_NAME, time.time())
 
@@ -268,12 +279,20 @@ class Monitor:
 
     def get_crawler_disk_statistic(self, crawler_ip, crawler_username, crawler_site):
         crawler_disk_usage = self.get_crawler_disk_usage(crawler_ip, crawler_username)
+
+        metric = self.__status_implementation.get_metric_by_name(ApplicationConstants.CRAWLER_DISK_USAGE_METRIC_NAME)
+        if (metric is None) or (not metric):
+            self.__status_implementation.create_metric_by_name(ApplicationConstants.CRAWLER_DISK_USAGE_METRIC_NAME)
         self.__status_implementation.update_metric_point(crawler_disk_usage,
                                                          ApplicationConstants.CRAWLER_DISK_USAGE_METRIC_NAME +
                                                          crawler_site, time.time())
 
     def set_swift_disk_usage(self):
         swift_disk_usage = self.get_swift_disk_usage()
+
+        metric = self.__status_implementation.get_metric_by_name(ApplicationConstants.SWIFT_DISK_USAGE_METRIC_NAME)
+        if (metric is None) or (not metric):
+            self.__status_implementation.create_metric_by_name(ApplicationConstants.SWIFT_DISK_USAGE_METRIC_NAME)
         self.__status_implementation.update_metric_point(swift_disk_usage,
                                                          ApplicationConstants.SWIFT_DISK_USAGE_METRIC_NAME,
                                                          time.time())

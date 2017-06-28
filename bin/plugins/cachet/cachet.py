@@ -139,6 +139,15 @@ class Cachet:
             metrics.append(Metric(id=id, name=name))
         return metrics
 
+    def get_metric_by_name(self, endpoint, name):
+        metrics = self.get_metrics(endpoint)
+        if metrics is None or len(metrics) == 0:
+            return None
+        for metric in metrics:
+            if metric.get_name() == name:
+                return metric
+        return None
+
     @staticmethod
     def create_metric(endpoint, metric, token):
         json_str = CachetApiV1.create_metric(endpoint, metric.get_name(), metric.get_suffix(), metric.get_description(),
@@ -252,7 +261,7 @@ class Incident:
 
 
 class Metric:
-    def __init__(self, id, name=None, suffix=None, description=None, default_value=None):
+    def __init__(self, id=None, name=None, suffix=None, description=None, default_value=None):
         self.__id = id
         self.__name = name
         self.__suffix = suffix
