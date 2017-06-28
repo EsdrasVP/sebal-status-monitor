@@ -2,6 +2,7 @@ import logging
 import ConfigParser
 from bin.util.constants import ApplicationConstants
 from bin.plugins.cachet.cachet import Cachet
+from bin.plugins.cachet.cachet import Component
 from bin.plugins.cachet.cachet import Metric
 from bin.plugins.cachet.cachet import MetricPoint
 from bin.plugins.cachet.cachet import Incident
@@ -47,3 +48,11 @@ class CachetPlugin:
                 metric_point = MetricPoint(current_metric.get_id(), point, int(timestamp))
                 Cachet.create_metric_point(endpoint=self.__cachet_host_url, metric_point=metric_point,
                                            token=self.__cachet_token)
+
+    def get_component_by_name(self, component_name):
+        return Cachet.get_component_by_name(endpoint=self.__cachet_host_url, name=component_name)
+
+    def create_component_by_name(self, component_name):
+        component = Component(name=component_name)
+        Cachet.create_component(endpoint=self.__cachet_host_url, component=component, token=self.__cachet_token)
+        logging.debug("Creating component %s" % component.get_name())

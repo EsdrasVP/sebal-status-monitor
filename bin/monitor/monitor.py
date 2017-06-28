@@ -84,12 +84,18 @@ class Monitor:
             raise ValueError('Component ' + component + ' does exist!')
 
     def set_scheduler_status(self):
+        scheduler_component = self.__status_implementation.get_component_by_name(ApplicationConstants.
+                                                                                 SCHEDULER_COMPONENT)
+        if (scheduler_component is None) or (not scheduler_component):
+            self.__status_implementation.create_component_by_name(ApplicationConstants.SCHEDULER_COMPONENT)
+
         is_active = self.get_scheduler_status()
         if is_active == 0:
             self.__status_implementation.update_component_status(ApplicationConstants.SCHEDULER_COMPONENT, 1)
         else:
             self.__status_implementation.set_operation_failure(ApplicationConstants.SCHEDULER_COMPONENT,
-                                                               ApplicationConstants.SCHEDULER_COMPONENT + " is down!")
+                                                               ApplicationConstants.SCHEDULER_COMPONENT +
+                                                               " is down!")
 
     def get_scheduler_status(self):
         command = 'ps xau | grep java | grep SebalMain | wc -l'
@@ -109,6 +115,11 @@ class Monitor:
                                        crawler.get_crawler_site())
 
     def update_crawler_status(self, crawler_ip, crawler_username, crawler_site):
+        crawler_component = self.__status_implementation.get_component_by_name(ApplicationConstants.CRAWLER_COMPONENT +
+                                                                               crawler_site)
+        if (crawler_component is None) or (not crawler_component):
+            self.__status_implementation.create_component_by_name(ApplicationConstants.CRAWLER_COMPONENT + crawler_site)
+
         is_active = self.get_crawler_status(crawler_ip, crawler_username)
         if is_active == 0:
             self.__status_implementation.update_component_status(ApplicationConstants.CRAWLER_COMPONENT +
@@ -130,6 +141,10 @@ class Monitor:
         return 1
 
     def set_fetcher_status(self):
+        fetcher_component = self.__status_implementation.get_component_by_name(ApplicationConstants.FETCHER_COMPONENT)
+        if (fetcher_component is None) or (not fetcher_component):
+            self.__status_implementation.create_component_by_name(ApplicationConstants.FETCHER_COMPONENT)
+
         is_active = self.get_fetcher_status()
         if is_active == 0:
             self.__status_implementation.update_component_status(ApplicationConstants.FETCHER_COMPONENT, 1)
